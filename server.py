@@ -15,31 +15,63 @@ HTML_INDEX = """
   <meta charset="utf-8"/>
   <title>NASA Tiler — JP2 datasets</title>
   <style>
+    /* Mars Area Theme */
     :root {
-      /* Dark Theme Palette */
-      --background: hsl(222.2 84% 4.9%);
-      --foreground: hsl(210 40% 98%);
-      --card: hsl(222.2 84% 4.9%);
-      --muted: hsl(217.2 32.6% 17.5%);
-      --muted-foreground: hsl(215 20.2% 65.1%);
-      --primary: hsl(217.2 91.2% 59.8%);
-      --primary-foreground: hsl(210 40% 98%);
-      --border: hsl(217.2 32.6% 17.5%);
       --radius: 0.5rem;
+      --foreground: #ffffff;
+      --red-primary: #D94D2C;
+      --red-secondary: #B13B2D;
+      --background-start: #2a0a0a;
+      --background-end: #0d0202;
     }
-    body { 
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-      margin: 0; padding: 2rem; background-color: var(--background); color: var(--foreground);
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      margin: 0;
+      padding: 2rem;
+      background: linear-gradient(180deg, var(--background-start) 0%, var(--background-end) 100%);
+      color: var(--foreground);
+      min-height: 100vh;
     }
     .container {
-      max-width: 900px; margin: 2rem auto; padding: 2rem;
-      border-radius: var(--radius); border: 1px solid var(--border);
-      background: var(--card);
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 2rem;
+      text-align: center;
     }
-    h1 { text-align: center; }
-    ul { list-style-type: none; padding: 0; }
-    li a { display: block; padding: 1rem; margin-bottom: 0.5rem; border-radius: var(--radius); background: var(--muted); color: var(--foreground); text-decoration: none; transition: background-color 0.2s; }
-    li a:hover { background-color: var(--primary); color: var(--primary-foreground); }
+    h1 {
+      font-size: 2.5rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    h1 span {
+        display: block;
+        font-size: 4rem;
+        margin-bottom: 1rem;
+    }
+    ul {
+      list-style-type: none;
+      padding: 0;
+      margin-top: 2rem;
+    }
+    .btn {
+      display: block;
+      padding: 1rem;
+      margin: 0.5rem auto;
+      max-width: 400px;
+      border-radius: var(--radius);
+      text-decoration: none;
+      font-weight: 600;
+      transition: all 0.2s ease-in-out;
+      border: 2px solid transparent;
+    }
+    .btn-primary {
+      background-color: var(--red-primary);
+      color: var(--foreground);
+    }
+    .btn-primary:hover {
+      background-color: var(--red-secondary);
+      transform: translateY(-2px);
+    }
   </style>
 </head>
 <body>
@@ -57,16 +89,20 @@ VIEWER_HTML = """
 <head>
   <meta charset="utf-8"/><title>Viewer - {{name}}</title>
   <style>
+    /* Mars Area Theme */
     :root {
-      --background: hsl(224, 71%, 4%); --foreground: hsl(210 40% 98%);
-      --card: hsl(224, 71%, 4%); --card-foreground: hsl(210 40% 98%);
-      --muted: hsl(217.2 32.6% 17.5%); --muted-foreground: hsl(215 20.2% 65.1%);
-      --primary: hsl(217.2 91.2% 59.8%); --primary-foreground: hsl(210 40% 98%);
-      --border: hsl(217.2 32.6% 17.5%); --radius: 0.5rem;
+      --radius: 0.5rem;
+      --foreground: #ffffff;
+      --red-primary: #D94D2C;
+      --red-secondary: #B13B2D;
+      --background-start: #2a0a0a;
+      --background-end: #0d0202;
+      --panel-bg: rgba(255, 255, 255, 0.05);
+      --border-color: rgba(255, 255, 255, 0.1);
     }
     html, body {
       height: 100vh; width: 100vw; margin: 0; padding: 0;
-      background-color: var(--background);
+      background: linear-gradient(180deg, var(--background-start) 0%, var(--background-end) 100%);
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       color: var(--foreground); overflow: hidden;
     }
@@ -77,21 +113,38 @@ VIEWER_HTML = """
       height: 100vh; padding: 1rem; gap: 1rem;
     }
     .sidebar-left { grid-area: sidebar-left; }
-    .main-viewer-area { grid-area: main; position: relative; border: 1px solid var(--border); border-radius: var(--radius); background: var(--background); }
+    .main-viewer-area { grid-area: main; position: relative; border: 1px solid var(--border-color); border-radius: var(--radius); background: #000; }
     .sidebar-right { grid-area: sidebar-right; display: flex; flex-direction: column; gap: 1rem; }
     .timeline-explorer { grid-area: timeline; }
-    .panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
-    .panel h3 { margin-top: 0; margin-bottom: 1rem; font-size: 0.9rem; font-weight: 600; }
-    .btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; border-radius: var(--radius); text-decoration: none; padding: 0.5rem 1rem; font-weight: 500; transition: all 0.2s; border: 1px solid var(--border); background: transparent; color: var(--foreground); cursor: pointer; }
-    .btn:hover { background-color: var(--muted); }
-    .btn.btn-primary { color: var(--primary-foreground); background-color: var(--primary); border-color: var(--primary); }
-    .annotation-group input[type="text"] { width: 100%; border: 1px solid var(--border); background: var(--background); padding: 0.5rem; border-radius: var(--radius); margin-bottom: 0.75rem; color: var(--foreground); }
-    .annotation-status { font-size: 0.8rem; color: var(--muted-foreground); min-height: 20px; }
+    .panel { background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1rem; }
+    .panel h3 { margin-top: 0; margin-bottom: 1rem; font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; width: 100%;
+      border-radius: var(--radius); text-decoration: none; padding: 0.5rem 1rem; font-weight: 600;
+      transition: all 0.2s ease-in-out; cursor: pointer; text-align: center;
+    }
+    .btn-primary {
+      background-color: var(--red-primary); color: var(--foreground); border: 2px solid var(--red-primary);
+    }
+    .btn-primary:hover { background-color: var(--red-secondary); border-color: var(--red-secondary); }
+    .btn-secondary {
+        background-color: transparent; color: var(--red-primary); border: 2px solid var(--red-primary);
+    }
+    .btn-secondary:hover { background-color: rgba(217, 77, 44, 0.1); }
+    .annotation-group input[type="text"] {
+        width: 100%; border: 1px solid var(--border-color); background: transparent;
+        padding: 0.5rem; border-radius: var(--radius); margin-bottom: 0.75rem; color: var(--foreground);
+    }
+    .annotation-status { font-size: 0.8rem; color: #aaa; min-height: 20px; }
     #viewer { width: 100%; height: 100%; border-radius: var(--radius); }
     #viewer .openseadragon-canvas { cursor: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSI2IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjEuNSIvPjxwYXRoIGQ9Ik0xNiA0VjEwTTE2IDIyVjI4TTQgMTZIMTBMMjIgMTZIMjgiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMS41Ii8+PC9zdmc+') 16 16, crosshair; }
     .viewer-controls { position: absolute; top: 1rem; left: 1rem; z-index: 100; display: flex; flex-direction: column; gap: 0.5rem; }
-    .control-btn { width: 36px; height: 36px; font-size: 1rem; padding: 0; background: var(--card); }
-    .annotation-marker { width: 24px; height: 24px; border-radius: 50%; background-color: hsla(217, 91%, 59%, 0.5); border: 2px solid white; box-shadow: 0 0 5px black; cursor: pointer; }
+    .control-btn {
+        width: 36px; height: 36px; font-size: 1rem; padding: 0;
+        background-color: var(--panel-bg); color: var(--red-primary); border: 1px solid var(--red-primary);
+    }
+    .control-btn:hover { background-color: rgba(217, 77, 44, 0.1); }
+    .annotation-marker { width: 24px; height: 24px; border-radius: 50%; background-color: hsla(11, 70%, 52%, 0.5); border: 2px solid white; box-shadow: 0 0 5px black; cursor: pointer; }
     .annotation-marker:hover .annotation-tooltip { display: block; }
     .annotation-tooltip { display: none; position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%); background: #222; color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.9rem; white-space: nowrap; }
   </style>
@@ -102,7 +155,7 @@ VIEWER_HTML = """
     <div class="sidebar-left"></div>
     <div class="main-viewer-area"><div id="viewer"></div><div class="viewer-controls"><button id="zoom-in" class="btn control-btn">+</button><button id="zoom-out" class="btn control-btn">-</button></div></div>
     <div class="sidebar-right">
-        <div class="panel"><h3>Dataset</h3></div>
+        <div class="panel"><h3>Dataset</h3><p>{{name}}</p></div>
         <div class="panel annotation-group">
             <h3>Annotations</h3>
             <p id="annotation-status" class="annotation-status">Click on the image to place a marker.</p>
@@ -160,7 +213,8 @@ def index():
         for subdir in sorted(tiles_dir.iterdir()):
             if subdir.is_dir() and (subdir / "output.dzi").exists():
                 name = subdir.name
-                list_items += f'<li><a href="/viewer/{name}">{name}</a></li>'
+                # Applied the button classes to the links
+                list_items += f'<li><a href="/viewer/{name}" class="btn btn-primary">{name}</a></li>'
     if not list_items:
         list_items = "<p>No processed image folders found.</p>"
     return render_template_string(HTML_INDEX, IMAGE_LIST=list_items)
