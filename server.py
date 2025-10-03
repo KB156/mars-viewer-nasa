@@ -15,38 +15,79 @@ HTML_INDEX = """
   <meta charset="utf-8"/>
   <title>NASA Tiler — JP2 datasets</title>
   <style>
-    /* Mars Area Theme */
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&display=swap');
+    
     :root {
       --radius: 0.5rem;
       --foreground: #ffffff;
+      --orange-primary: #FF8C42;
       --red-primary: #D94D2C;
       --red-secondary: #B13B2D;
-      --background-start: #2a0a0a;
-      --background-end: #0d0202;
+      --background-mars-top: #8B3A3A;
+      --background-mars-bottom: #FF6B35;
     }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-family: 'Orbitron', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       margin: 0;
       padding: 2rem;
-      background: linear-gradient(180deg, var(--background-start) 0%, var(--background-end) 100%);
+      background: linear-gradient(180deg, var(--background-mars-top) 0%, var(--background-mars-bottom) 100%);
       color: var(--foreground);
       min-height: 100vh;
+      position: relative;
+      overflow-x: hidden;
     }
+    
+    /* Animated stars */
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 40%;
+      background-image: 
+        radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,0.5), rgba(0,0,0,0)),
+        radial-gradient(2px 2px at 60px 70px, rgba(255,255,255,0.4), rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 50px 50px, rgba(255,255,255,0.3), rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 130px 80px, rgba(255,255,255,0.6), rgba(0,0,0,0)),
+        radial-gradient(2px 2px at 90px 10px, rgba(255,255,255,0.5), rgba(0,0,0,0));
+      background-size: 200px 200px;
+      background-position: 0 0, 40px 60px, 130px 270px, 70px 100px, 150px 50px;
+      animation: twinkle 5s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 0;
+    }
+    
+    @keyframes twinkle {
+      0%, 100% { opacity: 0.6; }
+      50% { opacity: 1; }
+    }
+    
     .container {
       max-width: 900px;
       margin: 2rem auto;
       padding: 2rem;
       text-align: center;
+      position: relative;
+      z-index: 1;
     }
     h1 {
-      font-size: 2.5rem;
-      font-weight: 600;
+      font-size: 3.5rem;
+      font-weight: 700;
       margin-bottom: 1rem;
+      text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      letter-spacing: 2px;
     }
     h1 span {
         display: block;
         font-size: 4rem;
         margin-bottom: 1rem;
+    }
+    .subtitle {
+      font-size: 1.1rem;
+      margin-bottom: 2rem;
+      opacity: 0.9;
+      font-weight: 400;
     }
     ul {
       list-style-type: none;
@@ -55,28 +96,51 @@ HTML_INDEX = """
     }
     .btn {
       display: block;
-      padding: 1rem;
-      margin: 0.5rem auto;
+      padding: 1.2rem;
+      margin: 0.8rem auto;
       max-width: 400px;
-      border-radius: var(--radius);
+      border-radius: 50px;
       text-decoration: none;
-      font-weight: 600;
-      transition: all 0.2s ease-in-out;
-      border: 2px solid transparent;
+      font-weight: 700;
+      transition: all 0.3s ease-in-out;
+      border: 3px solid transparent;
+      font-family: 'Orbitron', sans-serif;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      font-size: 1rem;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .btn-primary {
-      background-color: var(--red-primary);
-      color: var(--foreground);
+      background-color: var(--orange-primary);
+      color: #000;
+      border-color: var(--orange-primary);
     }
     .btn-primary:hover {
+      background-color: #FFA057;
+      border-color: #FFA057;
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(255, 140, 66, 0.5);
+    }
+    .btn-secondary {
+      background-color: var(--red-primary);
+      color: var(--foreground);
+      border-color: var(--red-primary);
+    }
+    .btn-secondary:hover {
       background-color: var(--red-secondary);
-      transform: translateY(-2px);
+      border-color: var(--red-secondary);
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(217, 77, 44, 0.5);
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1><span>🛰️</span> Available HiRISE Images</h1>
+    <h1> Welcome to the HiRISE Gallery</h1>
+    <p class="subtitle">You've successfully connected to the HiRISE. Click on the images to explore the HiRISE images taken by the Mars Reconnaissance Orbiter (MRO)</p>
     <ul>{{IMAGE_LIST | safe}}</ul>
   </div>
 </body>
@@ -89,64 +153,93 @@ VIEWER_HTML = """
 <head>
   <meta charset="utf-8"/><title>Viewer - {{name}}</title>
   <style>
-    /* Mars Area Theme */
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700&display=swap');
+    
     :root {
       --radius: 0.5rem;
       --foreground: #ffffff;
+      --orange-primary: #FF8C42;
       --red-primary: #D94D2C;
       --red-secondary: #B13B2D;
-      --background-start: #2a0a0a;
-      --background-end: #0d0202;
-      --panel-bg: rgba(255, 255, 255, 0.05);
-      --border-color: rgba(255, 255, 255, 0.1);
+      --background-mars-top: #8B3A3A;
+      --background-mars-bottom: #FF6B35;
+      --panel-bg: rgba(0, 0, 0, 0.3);
+      --border-color: rgba(255, 255, 255, 0.2);
     }
     html, body {
       height: 100vh; width: 100vw; margin: 0; padding: 0;
-      background: linear-gradient(180deg, var(--background-start) 0%, var(--background-end) 100%);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: linear-gradient(180deg, var(--background-mars-top) 0%, var(--background-mars-bottom) 100%);
+      font-family: 'Orbitron', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       color: var(--foreground); overflow: hidden;
     }
+    
+    /* Stars effect */
+    body::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 40%;
+      background-image: 
+        radial-gradient(2px 2px at 20px 30px, rgba(255,255,255,0.5), rgba(0,0,0,0)),
+        radial-gradient(2px 2px at 60px 70px, rgba(255,255,255,0.4), rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 50px 50px, rgba(255,255,255,0.3), rgba(0,0,0,0)),
+        radial-gradient(1px 1px at 130px 80px, rgba(255,255,255,0.6), rgba(0,0,0,0)),
+        radial-gradient(2px 2px at 90px 10px, rgba(255,255,255,0.5), rgba(0,0,0,0));
+      background-size: 200px 200px;
+      background-position: 0 0, 40px 60px, 130px 270px, 70px 100px, 150px 50px;
+      pointer-events: none;
+      z-index: 0;
+    }
+    
     * { box-sizing: border-box; }
     .viewer-grid-container {
       display: grid; grid-template-columns: 200px 1fr 240px;
       grid-template-rows: 1fr auto; grid-template-areas: "sidebar-left main sidebar-right" "timeline timeline timeline";
-      height: 100vh; padding: 1rem; gap: 1rem;
+      height: 100vh; padding: 1rem; gap: 1rem; position: relative; z-index: 1;
     }
     .sidebar-left { grid-area: sidebar-left; }
-    .main-viewer-area { grid-area: main; position: relative; border: 1px solid var(--border-color); border-radius: var(--radius); background: #000; }
+    .main-viewer-area { grid-area: main; position: relative; border: 2px solid var(--border-color); border-radius: var(--radius); background: #000; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
     .sidebar-right { grid-area: sidebar-right; display: flex; flex-direction: column; gap: 1rem; }
     .timeline-explorer { grid-area: timeline; }
-    .panel { background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: var(--radius); padding: 1rem; }
-    .panel h3 { margin-top: 0; margin-bottom: 1rem; font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .panel { background: var(--panel-bg); border: 2px solid var(--border-color); border-radius: var(--radius); padding: 1rem; backdrop-filter: blur(10px); overflow: hidden; }
+    .panel h3 { margin-top: 0; margin-bottom: 1rem; font-size: 0.9rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+    .panel p { word-wrap: break-word; overflow-wrap: break-word; font-size: 0.85rem; line-height: 1.4; }
     .btn {
       display: inline-flex; align-items: center; justify-content: center; width: 100%;
-      border-radius: var(--radius); text-decoration: none; padding: 0.5rem 1rem; font-weight: 600;
-      transition: all 0.2s ease-in-out; cursor: pointer; text-align: center;
+      border-radius: 50px; text-decoration: none; padding: 0.8rem 1rem; font-weight: 700;
+      transition: all 0.3s ease-in-out; cursor: pointer; text-align: center;
+      font-family: 'Orbitron', sans-serif; text-transform: uppercase; letter-spacing: 0.5px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.3);
     }
     .btn-primary {
-      background-color: var(--red-primary); color: var(--foreground); border: 2px solid var(--red-primary);
+      background-color: var(--orange-primary); color: #000; border: 2px solid var(--orange-primary);
     }
-    .btn-primary:hover { background-color: var(--red-secondary); border-color: var(--red-secondary); }
+    .btn-primary:hover { background-color: #FFA057; border-color: #FFA057; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(255, 140, 66, 0.5); }
     .btn-secondary {
-        background-color: transparent; color: var(--red-primary); border: 2px solid var(--red-primary);
+        background-color: transparent; color: var(--orange-primary); border: 2px solid var(--orange-primary);
     }
-    .btn-secondary:hover { background-color: rgba(217, 77, 44, 0.1); }
+    .btn-secondary:hover { background-color: rgba(255, 140, 66, 0.2); transform: translateY(-2px); }
     .annotation-group input[type="text"] {
-        width: 100%; border: 1px solid var(--border-color); background: transparent;
-        padding: 0.5rem; border-radius: var(--radius); margin-bottom: 0.75rem; color: var(--foreground);
+        width: 100%; border: 2px solid var(--border-color); background: rgba(0,0,0,0.3);
+        padding: 0.7rem; border-radius: var(--radius); margin-bottom: 0.75rem; color: var(--foreground);
+        font-family: 'Orbitron', sans-serif; font-size: 0.9rem;
     }
-    .annotation-status { font-size: 0.8rem; color: #aaa; min-height: 20px; }
+    .annotation-group input[type="text"]:focus { outline: none; border-color: var(--orange-primary); }
+    .annotation-status { font-size: 0.75rem; color: #ccc; min-height: 20px; }
     #viewer { width: 100%; height: 100%; border-radius: var(--radius); }
     #viewer .openseadragon-canvas { cursor: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSI2IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjEuNSIvPjxwYXRoIGQ9Ik0xNiA0VjEwTTE2IDIyVjI4TTQgMTZIMTBMMjIgMTZIMjgiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMS41Ii8+PC9zdmc+') 16 16, crosshair; }
     .viewer-controls { position: absolute; top: 1rem; left: 1rem; z-index: 100; display: flex; flex-direction: column; gap: 0.5rem; }
     .control-btn {
-        width: 36px; height: 36px; font-size: 1rem; padding: 0;
-        background-color: var(--panel-bg); color: var(--red-primary); border: 1px solid var(--red-primary);
+        width: 40px; height: 40px; font-size: 1.2rem; padding: 0; font-weight: 700;
+        background-color: var(--panel-bg); color: var(--orange-primary); border: 2px solid var(--orange-primary);
+        backdrop-filter: blur(10px);
     }
-    .control-btn:hover { background-color: rgba(217, 77, 44, 0.1); }
-    .annotation-marker { width: 24px; height: 24px; border-radius: 50%; background-color: hsla(11, 70%, 52%, 0.5); border: 2px solid white; box-shadow: 0 0 5px black; cursor: pointer; }
+    .control-btn:hover { background-color: rgba(255, 140, 66, 0.2); transform: scale(1.1); }
+    .annotation-marker { width: 24px; height: 24px; border-radius: 50%; background-color: rgba(255, 140, 66, 0.6); border: 2px solid white; box-shadow: 0 0 8px rgba(255, 140, 66, 0.8); cursor: pointer; }
     .annotation-marker:hover .annotation-tooltip { display: block; }
-    .annotation-tooltip { display: none; position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%); background: #222; color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.9rem; white-space: nowrap; }
+    .annotation-tooltip { display: none; position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%); background: #222; color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.9rem; white-space: nowrap; font-family: 'Orbitron', sans-serif; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/openseadragon@4.1.1/build/openseadragon/openseadragon.min.js"></script>
 </head>
@@ -213,7 +306,6 @@ def index():
         for subdir in sorted(tiles_dir.iterdir()):
             if subdir.is_dir() and (subdir / "output.dzi").exists():
                 name = subdir.name
-                # Applied the button classes to the links
                 list_items += f'<li><a href="/viewer/{name}" class="btn btn-primary">{name}</a></li>'
     if not list_items:
         list_items = "<p>No processed image folders found.</p>"
