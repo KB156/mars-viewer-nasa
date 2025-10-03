@@ -16,7 +16,6 @@ HTML_INDEX = """
   <title>NASA Tiler — JP2 datasets</title>
   <style>
     :root {
-      /* Dark Theme Palette */
       --background: hsl(222.2 84% 4.9%);
       --foreground: hsl(210 40% 98%);
       --card: hsl(222.2 84% 4.9%);
@@ -30,9 +29,35 @@ HTML_INDEX = """
     body { 
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
       margin: 0; padding: 2rem; background-color: var(--background); color: var(--foreground);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    /* */
+    .main-content-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 3rem;
+        width: 100%;
+        max-width: 1000px;
+        justify-content: center;
+    }
+    /* */
+    #globe-container {
+        width: 400px;
+        height: 400px;
+        flex-shrink: 0; /* Prevents the globe from shrinking */
+    }
+    #globe-container canvas {
+        display: block;
+        width: 100%;
+        height: 100%;
     }
     .container {
-      max-width: 900px; margin: 2rem auto; padding: 2rem;
+      width: 100%;
+      max-width: 500px; 
+      padding: 2rem;
       border-radius: var(--radius); border: 1px solid var(--border);
       background: var(--card);
     }
@@ -43,14 +68,80 @@ HTML_INDEX = """
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1><span>🛰️</span> Available HiRISE Images</h1>
-    <ul>{{IMAGE_LIST | safe}}</ul>
+  -->
+  <div class="main-content-wrapper">
+    <div id="globe-container"></div>
+    <div class="container">
+      <h1><span>🛰️</span> Available HiRISE Images</h1>
+      <ul>{{IMAGE_LIST | safe}}</ul>
+    </div>
   </div>
+
+  -->
+  <script type="module">
+    import * as THREE from 'https://cdn.skypack.dev/three@0.132.2';
+    import { OrbitControls } from 'https://cdn.skypack.dev/three@0.132.2/examples/jsm/controls/OrbitControls.js';
+
+    // const globeContainer = document.getElementById('globe-container');
+
+    // 1. Scene Setup
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, globeContainer.clientWidth / globeContainer.clientHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({
+        antialias: true,
+        alpha: true // Make renderer background transparent
+    });
+    renderer.setSize(globeContainer.clientWidth, globeContainer.clientHeight);
+    // globeContainer.appendChild(renderer.domElement);
+
+    // 2. Add Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    scene.add(ambientLight);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    directionalLight.position.set(5, 3, 5);
+    scene.add(directionalLight);
+    
+    // 3. Create the Globe
+    const geometry = new THREE.SphereGeometry(2, 64, 32);
+    const textureLoader = new THREE.TextureLoader();
+    // const marsTexture = textureLoader.load('/static/mars_map.jpg');
+    const material = new THREE.MeshStandardMaterial({ map: marsTexture });
+    const marsGlobe = new THREE.Mesh(geometry, material);
+    scene.add(marsGlobe);
+    camera.position.z = 4;
+
+    // 4. Add Controls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.enablePan = false; // Optional: disable panning
+    controls.minDistance = 3;   // Optional: set min zoom
+    controls.maxDistance = 8;   // Optional: set max zoom
+
+    // 5. Animation Loop
+    function animate() {
+        requestAnimationFrame(animate);
+        marsGlobe.rotation.y += 0.0005; // Gently rotate the globe
+        controls.update();
+        renderer.render(scene, camera);
+    }
+
+    // window.addEventListener('resize', () => {
+        // Only resize if container dimensions actually change
+        if (globeContainer.clientWidth > 0 && globeContainer.clientHeight > 0) {
+            camera.aspect = globeContainer.clientWidth / globeContainer.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(globeContainer.clientWidth, globeContainer.clientHeight);
+        }
+    });
+
+    animate();
+  </script>
 </body>
 </html>
 """
 
+# The rest of your Python code (VIEWER_HTML, routes, etc.) remains the same.
 VIEWER_HTML = """
 <!doctype html>
 <html>
