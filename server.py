@@ -1,147 +1,26 @@
 #!/usr/bin/env python3
 from pathlib import Path
-from flask import Flask, render_template_string, send_from_directory, request, jsonify
+from flask import Flask, render_template_string, request, jsonify
 import json
-import time
+import google.generativeai as genai
 
+# --- Configuration ---
+# STEP 1: Paste your Google AI API key here.
+API_KEY = "AIzaSyDnoX6ZkMw7M5OPiNtfVpZFzsLR_v74hZ8"
+
+# Configure the Generative AI library
+if API_KEY and API_KEY != "AIzaSyDnoX6ZkMw7M5OPiNtfVpZFzsLR_v74hZ8":
+    genai.configure(api_key=API_KEY)
+    print("✅ Google AI API Key configured.")
+else:
+    print("\n\n⚠️ WARNING: API KEY NOT SET ⚠️")
+    print("Please paste your Google AI API key into the 'API_KEY' variable in the script.\n")
+
+# --- Flask App Setup ---
 app = Flask(__name__, static_folder="static")
 ANNOTATIONS_DIR = Path(app.static_folder) / "annotations"
 
-# --- HTML Templates ---
-HTML_INDEX = """
-<!doctype html>
-<html>
-<head>
-  <meta charset="utf-8"/>
-  <title>NASA Tiler — JP2 datasets</title>
-  <style>
-    :root {
-      --background: hsl(222.2 84% 4.9%);
-      --foreground: hsl(210 40% 98%);
-      --card: hsl(222.2 84% 4.9%);
-      --muted: hsl(217.2 32.6% 17.5%);
-      --muted-foreground: hsl(215 20.2% 65.1%);
-      --primary: hsl(217.2 91.2% 59.8%);
-      --primary-foreground: hsl(210 40% 98%);
-      --border: hsl(217.2 32.6% 17.5%);
-      --radius: 0.5rem;
-    }
-    body { 
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-      margin: 0; padding: 2rem; background-color: var(--background); color: var(--foreground);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-    }
-    /* */
-    .main-content-wrapper {
-        display: flex;
-        align-items: center;
-        gap: 3rem;
-        width: 100%;
-        max-width: 1000px;
-        justify-content: center;
-    }
-    /* */
-    #globe-container {
-        width: 400px;
-        height: 400px;
-        flex-shrink: 0; /* Prevents the globe from shrinking */
-    }
-    #globe-container canvas {
-        display: block;
-        width: 100%;
-        height: 100%;
-    }
-    .container {
-      width: 100%;
-      max-width: 500px; 
-      padding: 2rem;
-      border-radius: var(--radius); border: 1px solid var(--border);
-      background: var(--card);
-    }
-    h1 { text-align: center; }
-    ul { list-style-type: none; padding: 0; }
-    li a { display: block; padding: 1rem; margin-bottom: 0.5rem; border-radius: var(--radius); background: var(--muted); color: var(--foreground); text-decoration: none; transition: background-color 0.2s; }
-    li a:hover { background-color: var(--primary); color: var(--primary-foreground); }
-  </style>
-</head>
-<body>
-  -->
-  <div class="main-content-wrapper">
-    <div id="globe-container"></div>
-    <div class="container">
-      <h1><span>🛰️</span> Available HiRISE Images</h1>
-      <ul>{{IMAGE_LIST | safe}}</ul>
-    </div>
-  </div>
-
-  -->
-  <script type="module">
-    import * as THREE from 'https://cdn.skypack.dev/three@0.132.2';
-    import { OrbitControls } from 'https://cdn.skypack.dev/three@0.132.2/examples/jsm/controls/OrbitControls.js';
-
-    // const globeContainer = document.getElementById('globe-container');
-
-    // 1. Scene Setup
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, globeContainer.clientWidth / globeContainer.clientHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({
-        antialias: true,
-        alpha: true // Make renderer background transparent
-    });
-    renderer.setSize(globeContainer.clientWidth, globeContainer.clientHeight);
-    // globeContainer.appendChild(renderer.domElement);
-
-    // 2. Add Lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    scene.add(ambientLight);
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
-    directionalLight.position.set(5, 3, 5);
-    scene.add(directionalLight);
-    
-    // 3. Create the Globe
-    const geometry = new THREE.SphereGeometry(2, 64, 32);
-    const textureLoader = new THREE.TextureLoader();
-    // const marsTexture = textureLoader.load('/static/mars_map.jpg');
-    const material = new THREE.MeshStandardMaterial({ map: marsTexture });
-    const marsGlobe = new THREE.Mesh(geometry, material);
-    scene.add(marsGlobe);
-    camera.position.z = 4;
-
-    // 4. Add Controls
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.enablePan = false; // Optional: disable panning
-    controls.minDistance = 3;   // Optional: set min zoom
-    controls.maxDistance = 8;   // Optional: set max zoom
-
-    // 5. Animation Loop
-    function animate() {
-        requestAnimationFrame(animate);
-        marsGlobe.rotation.y += 0.0005; // Gently rotate the globe
-        controls.update();
-        renderer.render(scene, camera);
-    }
-
-    // window.addEventListener('resize', () => {
-        // Only resize if container dimensions actually change
-        if (globeContainer.clientWidth > 0 && globeContainer.clientHeight > 0) {
-            camera.aspect = globeContainer.clientWidth / globeContainer.clientHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(globeContainer.clientWidth, globeContainer.clientHeight);
-        }
-    });
-
-    animate();
-  </script>
-</body>
-</html>
-"""
-
-# The rest of your Python code (VIEWER_HTML, routes, etc.) remains the same.
+# --- HTML Template (with both features) ---
 VIEWER_HTML = """
 <!doctype html>
 <html>
@@ -164,25 +43,25 @@ VIEWER_HTML = """
     * { box-sizing: border-box; }
     .viewer-grid-container {
       display: grid; grid-template-columns: 200px 1fr 240px;
-      grid-template-rows: 1fr auto; grid-template-areas: "sidebar-left main sidebar-right" "timeline timeline timeline";
+      grid-template-rows: 1fr; grid-template-areas: "sidebar-left main sidebar-right";
       height: 100vh; padding: 1rem; gap: 1rem;
     }
     .sidebar-left { grid-area: sidebar-left; }
     .main-viewer-area { grid-area: main; position: relative; border: 1px solid var(--border); border-radius: var(--radius); background: var(--background); }
-    .sidebar-right { grid-area: sidebar-right; display: flex; flex-direction: column; gap: 1rem; }
-    .timeline-explorer { grid-area: timeline; }
+    .sidebar-right { grid-area: sidebar-right; display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; }
     .panel { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; }
     .panel h3 { margin-top: 0; margin-bottom: 1rem; font-size: 0.9rem; font-weight: 600; }
     .btn { display: inline-flex; align-items: center; justify-content: center; width: 100%; border-radius: var(--radius); text-decoration: none; padding: 0.5rem 1rem; font-weight: 500; transition: all 0.2s; border: 1px solid var(--border); background: transparent; color: var(--foreground); cursor: pointer; }
     .btn:hover { background-color: var(--muted); }
     .btn.btn-primary { color: var(--primary-foreground); background-color: var(--primary); border-color: var(--primary); }
-    .annotation-group input[type="text"] { width: 100%; border: 1px solid var(--border); background: var(--background); padding: 0.5rem; border-radius: var(--radius); margin-bottom: 0.75rem; color: var(--foreground); }
-    .annotation-status { font-size: 0.8rem; color: var(--muted-foreground); min-height: 20px; }
+    .btn.active { background-color: var(--primary); color: var(--primary-foreground); }
+    .form-group input[type="text"], .form-group textarea { width: 100%; border: 1px solid var(--border); background: var(--background); padding: 0.5rem; border-radius: var(--radius); margin-bottom: 0.75rem; color: var(--foreground); }
+    .form-status { font-size: 0.8rem; color: var(--muted-foreground); min-height: 20px; }
+    #rag-answer { white-space: pre-wrap; word-wrap: break-word; font-size: 0.9rem; background: var(--muted); padding: 0.75rem; border-radius: var(--radius); min-height: 50px; margin-top: 0.5rem; }
     #viewer { width: 100%; height: 100%; border-radius: var(--radius); }
-    #viewer .openseadragon-canvas { cursor: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iMzIiIHZpZXdCb3g9IjAgMCAzMiAzMiIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIxNiIgY3k9IjE2IiByPSI2IiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjEuNSIvPjxwYXRoIGQ9Ik0xNiA0VjEwTTE2IDIyVjI4TTQgMTZIMTBMMjIgMTZIMjgiIHN0cm9rZT0id2hpdGUiIHN0cm9rZS13aWR0aD0iMS41Ii8+PC9zdmc+') 16 16, crosshair; }
-    .viewer-controls { position: absolute; top: 1rem; left: 1rem; z-index: 100; display: flex; flex-direction: column; gap: 0.5rem; }
-    .control-btn { width: 36px; height: 36px; font-size: 1rem; padding: 0; background: var(--card); }
-    .annotation-marker { width: 24px; height: 24px; border-radius: 50%; background-color: hsla(217, 91%, 59%, 0.5); border: 2px solid white; box-shadow: 0 0 5px black; cursor: pointer; }
+    .openseadragon-canvas.drawing { cursor: crosshair; }
+    #selection-rect { position: absolute; border: 2px dashed var(--primary); background-color: hsla(217, 91%, 59%, 0.2); z-index: 100; pointer-events: none; }
+    .annotation-marker { width: 20px; height: 20px; border-radius: 50%; background-color: hsla(347, 91%, 59%, 0.7); border: 2px solid white; box-shadow: 0 0 5px black; cursor: pointer; transform: translate(-50%, -50%); }
     .annotation-marker:hover .annotation-tooltip { display: block; }
     .annotation-tooltip { display: none; position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%); background: #222; color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.9rem; white-space: nowrap; }
   </style>
@@ -191,58 +70,205 @@ VIEWER_HTML = """
 <body>
 <div class="viewer-grid-container">
     <div class="sidebar-left"></div>
-    <div class="main-viewer-area"><div id="viewer"></div><div class="viewer-controls"><button id="zoom-in" class="btn control-btn">+</button><button id="zoom-out" class="btn control-btn">-</button></div></div>
+    <div class="main-viewer-area">
+        <div id="viewer"></div>
+        <div id="selection-rect" style="display:none;"></div>
+    </div>
     <div class="sidebar-right">
-        <div class="panel"><h3>Dataset</h3></div>
-        <div class="panel annotation-group">
+        <div class="panel"><h3>Dataset: {{name}}</h3></div>
+        <div class="panel form-group">
+            <h3>Visual Query</h3>
+            <p id="rag-status" class="form-status">Click "Select Region" to begin.</p>
+            <button id="select-region-btn" class="btn">Select Region</button>
+            <textarea id="rag-question" placeholder="Ask about the selected region..." rows="3" style="resize: vertical; margin-top: 0.75rem;"></textarea>
+            <button id="ask-rag-btn" class="btn btn-primary">Ask AI</button>
+            <div id="rag-answer">AI answers will appear here.</div>
+        </div>
+        <div class="panel form-group">
             <h3>Annotations</h3>
-            <p id="annotation-status" class="annotation-status">Click on the image to place a marker.</p>
-            <input type="text" id="annotation-text" placeholder="Add annotation..."><button id="add-annotation-btn" class="btn btn-primary">+ Add</button>
+            <p id="annotation-status" class="form-status">Click on the image to place a marker.</p>
+            <input type="text" id="annotation-text" placeholder="Add annotation...">
+            <button id="add-annotation-btn" class="btn btn-primary">+ Add</button>
         </div>
     </div>
-    <div class="timeline-explorer panel"></div>
 </div>
+
 <script>
-    const datasetName = "{{name}}"; let newAnnotationPoint = null;
-    const viewer = OpenSeadragon({ id: "viewer", prefixUrl: "https://cdn.jsdelivr.net/npm/openseadragon@4.1.1/build/openseadragon/images/", tileSources: `/static/tiles/{{name}}/output.dzi`, showZoomControl: false, showHomeControl: false, showFullScreenControl: false, showNavigator: false });
+    const datasetName = "{{name}}";
+    const viewer = OpenSeadragon({
+        id: "viewer",
+        prefixUrl: "https://cdn.jsdelivr.net/npm/openseadragon@4.1.1/build/openseadragon/images/",
+        tileSources: `/static/tiles/{{name}}/output.dzi`,
+    });
+
+    // --- State Variables ---
+    let isDrawing = false, isSelectionMode = false;
+    let selectionRect = { startX: 0, startY: 0 };
+    let selectedRegionDataUrl = null;
+    let newAnnotationPoint = null;
+
+    const selectionDiv = document.getElementById('selection-rect');
+    const viewerCanvas = viewer.canvas.querySelector('.openseadragon-canvas');
+    
+    // --- Event Listeners Setup ---
+    document.addEventListener('DOMContentLoaded', () => {
+        document.getElementById('ask-rag-btn').addEventListener('click', handleVisualQuery);
+        document.getElementById('select-region-btn').addEventListener('click', toggleSelectionMode);
+        document.getElementById('add-annotation-btn').addEventListener('click', handleAddAnnotation);
+    });
+
+    // --- Annotation Logic ---
     function drawAnnotation(annotation) {
-        const marker = document.createElement('div'); marker.className = 'annotation-marker';
-        const tooltip = document.createElement('div'); tooltip.className = 'annotation-tooltip'; tooltip.textContent = annotation.text;
+        const marker = document.createElement('div');
+        marker.className = 'annotation-marker';
+        const tooltip = document.createElement('div');
+        tooltip.className = 'annotation-tooltip';
+        tooltip.textContent = annotation.text;
         marker.appendChild(tooltip);
         viewer.addOverlay({ element: marker, location: new OpenSeadragon.Point(annotation.x, annotation.y) });
     }
+
     async function loadAnnotations() {
         try {
             const response = await fetch(`/annotations/${datasetName}`);
-            if (!response.ok) return;
-            const annotations = await response.json();
-            annotations.forEach(drawAnnotation);
+            if (response.ok) { (await response.json()).forEach(drawAnnotation); }
         } catch (e) { console.error("Could not load annotations", e); }
     }
+    
     viewer.addHandler('open', loadAnnotations);
+
+    async function handleAddAnnotation() {
+        const textInput = document.getElementById('annotation-text');
+        const text = textInput.value.trim();
+        if (!newAnnotationPoint) { alert('Please click on the image to place a marker first.'); return; }
+        if (!text) { alert('Please enter text for the annotation.'); return; }
+
+        const newAnnotation = { x: newAnnotationPoint.x, y: newAnnotationPoint.y, text: text };
+        const response = await fetch(`/annotations/${datasetName}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newAnnotation)
+        });
+
+        if (response.ok) {
+            drawAnnotation(newAnnotation);
+            textInput.value = '';
+            newAnnotationPoint = null;
+            document.getElementById('annotation-status').textContent = 'Annotation saved! Click image for a new one.';
+        } else { alert('Failed to save annotation.'); }
+    }
+    
+    // --- Visual Query Logic ---
+    function toggleSelectionMode() {
+        isSelectionMode = !isSelectionMode;
+        const btn = document.getElementById('select-region-btn');
+        if (isSelectionMode) {
+            btn.classList.add('active'); btn.textContent = 'Cancel Selection';
+            viewer.setMouseNavEnabled(false); viewerCanvas.classList.add('drawing');
+            document.getElementById('rag-status').textContent = 'Click and drag on the image.';
+        } else {
+            btn.classList.remove('active'); btn.textContent = 'Select Region';
+            viewer.setMouseNavEnabled(true); viewerCanvas.classList.remove('drawing');
+            selectionDiv.style.display = 'none';
+        }
+    }
+
+    function cropSelectedRegion() {
+        const rect = selectionDiv.getBoundingClientRect();
+        const viewerRect = viewer.container.getBoundingClientRect();
+        const [x, y, width, height] = [rect.left - viewerRect.left, rect.top - viewerRect.top, rect.width, rect.height];
+        
+        if (width <= 0 || height <= 0) { selectedRegionDataUrl = null; return; }
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = width; tempCanvas.height = height;
+        const ctx = tempCanvas.getContext('2d');
+        ctx.drawImage(viewer.drawer.canvas, x, y, width, height, 0, 0, width, height);
+        selectedRegionDataUrl = tempCanvas.toDataURL('image/jpeg');
+    }
+
+    async function handleVisualQuery() {
+        const question = document.getElementById('rag-question').value.trim();
+        const answerDiv = document.getElementById('rag-answer');
+        if (!question) { alert('Please enter a question.'); return; }
+        if (!selectedRegionDataUrl) { alert('Please select a region on the image first.'); return; }
+        answerDiv.textContent = '🧠 Sending to server for analysis...';
+        const base64_image = selectedRegionDataUrl.split(',')[1];
+        try {
+            const response = await fetch('/query_visual_rag', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: base64_image, question: question })
+            });
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.error || `Server Error: ${response.statusText}`);
+            }
+            const data = await response.json();
+            answerDiv.textContent = data.answer;
+        } catch (error) {
+            console.error("Visual Query failed:", error);
+            answerDiv.textContent = `Error: ${error.message}`;
+        }
+    }
+    
+    // --- Combined Mouse/Canvas Event Handlers ---
+    viewer.addHandler('canvas-press', e => {
+        if (!isSelectionMode) return;
+        isDrawing = true;
+        selectionRect = { startX: e.position.x, startY: e.position.y };
+        Object.assign(selectionDiv.style, {left: `${e.position.x}px`, top: `${e.position.y}px`, width: '0px', height: '0px', display: 'block'});
+    });
+    viewer.addHandler('canvas-drag', e => {
+        if (!isSelectionMode) return;
+        let { startX, startY } = selectionRect;
+        let endX = e.position.x, endY = e.position.y;
+        Object.assign(selectionDiv.style, {
+            left: `${Math.min(startX, endX)}px`, top: `${Math.min(startY, endY)}px`,
+            width: `${Math.abs(startX - endX)}px`, height: `${Math.abs(startY - endY)}px`
+        });
+    });
+    viewer.addHandler('canvas-release', e => {
+        if (!isDrawing) return;
+        isDrawing = false;
+        cropSelectedRegion();
+        toggleSelectionMode();
+        document.getElementById('rag-status').textContent = '✅ Region selected. Ask a question.';
+    });
     viewer.addHandler('canvas-click', function(event) {
+        if (isSelectionMode) return; // Don't place annotation marker when selecting a region
         newAnnotationPoint = viewer.viewport.pointFromPixel(event.position);
         document.getElementById('annotation-status').textContent = 'Marker placed. Add text and save.';
     });
-    document.getElementById('add-annotation-btn').addEventListener('click', async function() {
-        const textInput = document.getElementById('annotation-text'); const text = textInput.value.trim();
-        if (!newAnnotationPoint) { alert('Please click on the image to place a marker first.'); return; }
-        if (!text) { alert('Please enter some text for the annotation.'); return; }
-        const newAnnotation = { x: newAnnotationPoint.x, y: newAnnotationPoint.y, text: text };
-        const response = await fetch(`/annotations/${datasetName}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newAnnotation) });
-        if (response.ok) {
-            drawAnnotation(newAnnotation); textInput.value = ''; newAnnotationPoint = null;
-            document.getElementById('annotation-status').textContent = 'Annotation saved! Click image for new marker.';
-        } else { alert('Failed to save annotation.'); }
-    });
-    document.getElementById('zoom-in').addEventListener('click', () => viewer.viewport.zoomBy(1.4));
-    document.getElementById('zoom-out').addEventListener('click', () => viewer.viewport.zoomBy(1 / 1.4));
 </script>
 </body>
 </html>
 """
 
-# --- Web Routes ---
+# --- Server-Side AI Query Route ---
+@app.route("/query_visual_rag", methods=['POST'])
+def query_visual_rag():
+    if not API_KEY or API_KEY == "PASTE_YOUR_API_KEY_HERE":
+        return jsonify({"error": "API key is not configured on the server."}), 500
+    
+    data = request.get_json()
+    if not data or 'image' not in data or 'question' not in data:
+        return jsonify({"error": "Missing image or question"}), 400
+
+    model = genai.GenerativeModel('gemini-1.5-flash-latest')
+    image_part = {"mime_type": "image/jpeg", "data": data['image']}
+    prompt_parts = [f"Analyze this specific region of a satellite image. {data['question']}", image_part]
+
+    try:
+        response = model.generate_content(prompt_parts)
+        return jsonify({"answer": response.text})
+    except Exception as e:
+        print(f"An error occurred: {e}")
+        return jsonify({"error": str(e)}), 500
+
+# --- Existing Web Routes and Annotation Endpoints ---
+HTML_INDEX = """
+<!doctype html><html><head><meta charset="utf-8"/><title>NASA Tiler — JP2 datasets</title><style>:root{--background:hsl(222.2 84% 4.9%);--foreground:hsl(210 40% 98%);--card:hsl(222.2 84% 4.9%);--muted:hsl(217.2 32.6% 17.5%);--muted-foreground:hsl(215 20.2% 65.1%);--primary:hsl(217.2 91.2% 59.8%);--primary-foreground:hsl(210 40% 98%);--border:hsl(217.2 32.6% 17.5%);--radius:0.5rem}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;margin:0;padding:2rem;background-color:var(--background);color:var(--foreground)}.container{max-width:900px;margin:2rem auto;padding:2rem;border-radius:var(--radius);border:1px solid var(--border);background:var(--card)}h1{text-align:center}ul{list-style-type:none;padding:0}li a{display:block;padding:1rem;margin-bottom:0.5rem;border-radius:var(--radius);background:var(--muted);color:var(--foreground);text-decoration:none;transition:background-color .2s}li a:hover{background-color:var(--primary);color:var(--primary-foreground)}</style></head><body><div class="container"><h1><span>🛰️</span> Available HiRISE Images</h1><ul>{{IMAGE_LIST | safe}}</ul></div></body></html>
+"""
+
 @app.route("/")
 def index():
     list_items = ""
@@ -260,38 +286,28 @@ def index():
 def viewer(name):
     return render_template_string(VIEWER_HTML, name=name)
 
-# --- Annotation API Endpoints ---
-@app.route("/annotations/<name>", methods=['GET'])
-def get_annotations(name):
+@app.route("/annotations/<name>", methods=['GET', 'POST'])
+def handle_annotations(name):
     ANNOTATIONS_DIR.mkdir(parents=True, exist_ok=True)
     annotation_file = ANNOTATIONS_DIR / f"{name}.json"
-    if not annotation_file.exists():
-        return jsonify([])
-    with open(annotation_file, 'r') as f:
-        try: data = json.load(f)
-        except json.JSONDecodeError: data = []
-    response = jsonify(data)
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    return response
-
-@app.route("/annotations/<name>", methods=['POST'])
-def add_annotation(name):
-    ANNOTATIONS_DIR.mkdir(parents=True, exist_ok=True)
-    new_annotation = request.get_json()
-    if not new_annotation: return jsonify({"error": "Invalid data"}), 400
-    
-    annotation_file = ANNOTATIONS_DIR / f"{name}.json"
-    annotations = []
-    if annotation_file.exists():
-        with open(annotation_file, 'r') as f:
-            try: annotations = json.load(f)
-            except json.JSONDecodeError: pass
-    
-    annotations.append(new_annotation)
-    
-    with open(annotation_file, 'w') as f:
-        json.dump(annotations, f, indent=2)
-    return jsonify({"success": True}), 201
+    if request.method == 'GET':
+        if not annotation_file.exists(): return jsonify([])
+        with open(annotation_file, 'r', encoding='utf-8') as f:
+            try: data = json.load(f)
+            except json.JSONDecodeError: data = []
+        return jsonify(data)
+    if request.method == 'POST':
+        new_annotation = request.get_json()
+        if not new_annotation: return jsonify({"error": "Invalid data"}), 400
+        annotations = []
+        if annotation_file.exists():
+            with open(annotation_file, 'r', encoding='utf-8') as f:
+                try: annotations = json.load(f)
+                except json.JSONDecodeError: pass
+        annotations.append(new_annotation)
+        with open(annotation_file, 'w', encoding='utf-8') as f:
+            json.dump(annotations, f, indent=2)
+        return jsonify({"success": True}), 201
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=8080)
