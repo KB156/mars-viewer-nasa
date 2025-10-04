@@ -17,6 +17,21 @@ except KeyError:
     ai_model = None
     print("⚠️ WARNING: GOOGLE_API_KEY environment variable not set. AI features will be disabled.")
 
+# --- EDIT THIS DICTIONARY to define which images can be compared ---
+# To make two images comparable, you must add an entry for each one.
+# For example, to compare A and B, you need both 'A': 'B' and 'B': 'A'.
+SIMILAR_IMAGES = {
+    "ESP_011371_1835_ESP_011522_1835_RED": "ESP_012047_1155_ESP_029809_1155_RED",
+    "ESP_012047_1155_ESP_029809_1155_RED": "ESP_011371_1835_ESP_011522_1835_RED",
+
+    "ESP_062317_1740_MRGB" : "ESP_069651_1740_MRGB",
+    "ESP_069651_1740_MRGB" : "ESP_062317_1740_MRGB",
+
+
+    # Add other pairs here, for example:
+    # "IMAGE_C_NAME": "IMAGE_D_NAME",
+    # "IMAGE_D_NAME": "IMAGE_C_NAME",
+}
 
 app = Flask(__name__, static_folder="static")
 ANNOTATIONS_DIR = Path(app.static_folder) / "annotations"
@@ -51,10 +66,8 @@ HTML_INDEX = """
       color: var(--foreground);
       min-height: 100vh;
       position: relative;
-      overflow-x: hidden;
     }
     
-    /* --- UPDATED: Denser, Continuous Starfield --- */
     @keyframes move-stars {
         from { transform: translateY(0px); }
         to   { transform: translateY(-2000px); }
@@ -68,7 +81,7 @@ HTML_INDEX = """
         width: 100%;
         height: 100%;
         display: block;
-        z-index: 0;
+        z-index: -1;
     }
     .stars.s1 {
         background: transparent url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="2000"><circle cx="100" cy="300" r="1" fill="white"/><circle cx="400" cy="200" r="1" fill="white"/><circle cx="900" cy="800" r="1" fill="white"/><circle cx="1300" cy="600" r="1" fill="white"/><circle cx="1800" cy="1100" r="1" fill="white"/><circle cx="50" cy="1800" r="1" fill="white"/><circle cx="650" cy="1400" r="1" fill="white"/><circle cx="1050" cy="100" r="1" fill="white"/><circle cx="1450" cy="950" r="1" fill="white"/><circle cx="1950" cy="1550" r="1" fill="white"/><circle cx="220" cy="740" r="1" fill="white"/><circle cx="780" cy="1860" r="1" fill="white"/><circle cx="1230" cy="1340" r="1" fill="white"/><circle cx="1680" cy="250" r="1" fill="white"/><circle cx="880" cy="550" r="1" fill="white"/></svg>') repeat;
@@ -197,7 +210,6 @@ VIEWER_HTML = """
       color: var(--foreground); overflow: hidden;
     }
     
-    /* --- UPDATED: Denser, Continuous Starfield --- */
     @keyframes move-stars {
         from { transform: translateY(0px); }
         to   { transform: translateY(-2000px); }
@@ -209,11 +221,11 @@ VIEWER_HTML = """
         display: block; z-index: 0;
     }
     .stars.s1 {
-        background: transparent url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="2000"><circle cx="100" cy="300" r="1" fill="white"/><circle cx="400" cy="200" r="1" fill="white"/><circle cx="900" cy="800" r="1" fill="white"/><circle cx="1300" cy="600" r="1" fill="white"/><circle cx="1800" cy="1100" r="1" fill="white"/><circle cx="50" cy="1800" r="1" fill="white"/><circle cx="650" cy="1400" r="1" fill="white"/><circle cx="1050" cy="100" r="1" fill="white"/><circle cx="1450" cy="950" r="1" fill="white"/><circle cx="1950" cy="1550" r="1" fill="white"/><circle cx="220" cy="740" r="1" fill="white"/><circle cx="780" cy="1860" r="1" fill="white"/><circle cx="1230" cy="1340" r="1" fill="white"/><circle cx="1680" cy="250" r="1" fill="white"/><circle cx="880" cy="550" r="1" fill="white"/></svg>') repeat;
+        background: transparent url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="2000"><circle cx="100" cy="300" r="1" fill="white"/><circle cx="400" cy="200" r="1" fill="white"/><circle cx="900" cy="800" r="1" fill="white"/><circle cx="1300" cy="600" r="1" fill="white"/><circle cx="1800" cy="1100" r="1" fill="white"/></svg>') repeat;
         animation: move-stars 200s linear infinite;
     }
     .stars.s2 {
-        background: transparent url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="2000"><circle cx="250" cy="500" r="2" fill="white"/><circle cx="600" cy="800" r="2" fill="white"/><circle cx="1100" cy="1200" r="2" fill="white"/><circle cx="1500" cy="300" r="2" fill="white"/><circle cx="1900" cy="900" r="2" fill="white"/><circle cx="430" cy="1700" r="2" fill="white"/><circle cx="830" cy="100" r="2" fill="white"/><circle cx="1330" cy="1950" r="2" fill="white"/><circle cx="1730" cy="1400" r="2" fill="white"/></svg>') repeat;
+        background: transparent url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="2000"><circle cx="250" cy="500" r="2" fill="white"/><circle cx="600" cy="800" r="2" fill="white"/><circle cx="1100" cy="1200" r="2" fill="white"/><circle cx="1500" cy="300" r="2" fill="white"/><circle cx="1900" cy="900" r="2" fill="white"/></svg>') repeat;
         animation: move-stars 150s linear infinite;
     }
     
@@ -269,14 +281,25 @@ VIEWER_HTML = """
     .control-btn:hover { background-color: rgba(255, 107, 53, 0.2); transform: scale(1.1); }
     
     .annotation-marker { width: 24px; height: 24px; border-radius: 50%; background-color: rgba(255, 107, 53, 0.6); border: 2px solid white; box-shadow: 0 0 8px rgba(255, 107, 53, 0.8); cursor: pointer; }
-    .annotation-tooltip { display: none; position: absolute; bottom: 120%; left: 50%; transform: translateX(-50%); background: #222; color: white; padding: 5px 10px; border-radius: 4px; font-size: 0.9rem; white-space: nowrap; font-family: 'Orbitron', sans-serif; }
-    .annotation-marker:hover .annotation-tooltip { display: block; }
-    
     #ai-response-area {
         background-color: rgba(0,0,0,0.2); border-radius: var(--radius); padding: 0.8rem;
         margin-top: 0.5rem; font-size: 0.85rem; line-height: 1.5;
         white-space: pre-wrap; overflow-y: auto; flex-grow: 1; min-height: 0;
     }
+    
+    /* --- NEW: Comparison Modal Styles --- */
+    .modal-overlay {
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(0,0,0,0.85); backdrop-filter: blur(10px);
+        display: none; /* Hidden by default */
+        flex-direction: column; z-index: 1000; padding: 2rem;
+    }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; color: white; margin-bottom: 1rem; flex-shrink: 0;}
+    .modal-header h2 { margin: 0; }
+    #close-modal-btn { background: transparent; border: none; color: white; font-size: 2.5rem; cursor: pointer; }
+    .modal-content { display: flex; flex-grow: 1; gap: 1rem; }
+    .viewer-container { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; color: white; text-align: center; }
+    .compare-viewer { width: 100%; height: 100%; border: 2px solid var(--border-color); border-radius: var(--radius); }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/openseadragon@4.1.1/build/openseadragon/openseadragon.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
@@ -287,6 +310,14 @@ VIEWER_HTML = """
 <div class="viewer-grid-container">
     <div class="sidebar-left">
         <div class="panel"><h3>Dataset</h3><p>{{name}}</p></div>
+        
+        {% if compare_target %}
+        <div class="panel">
+            <h3>Compare Images</h3>
+            <p style="font-size: 0.8rem; opacity: 0.8; margin-bottom: 1rem;">A similar image is available for side-by-side comparison.</p>
+            <button id="compare-btn" class="btn btn-secondary">Compare</button>
+        </div>
+        {% endif %}
         
         <div class="panel form-group">
             <h3>Annotations</h3>
@@ -305,14 +336,46 @@ VIEWER_HTML = """
         </div>
     </div>
 </div>
+
+<div id="compare-modal" class="modal-overlay">
+    <div class="modal-header">
+        <h2>Image Comparison</h2>
+        <button id="close-modal-btn">&times;</button>
+    </div>
+    <div class="modal-content">
+        <div class="viewer-container">
+            <p>{{ name }}</p>
+            <div id="viewer-left" class="compare-viewer"></div>
+        </div>
+        <div class="viewer-container">
+            <p>{{ compare_target }}</p>
+            <div id="viewer-right" class="compare-viewer"></div>
+        </div>
+    </div>
+</div>
+
 <script>
-    
     const datasetName = "{{name}}"; let newAnnotationPoint = null;
     const viewer = OpenSeadragon({ id: "viewer", prefixUrl: "https://cdn.jsdelivr.net/npm/openseadragon@4.1.1/build/openseadragon/images/", tileSources: `/static/tiles/{{name}}/output.dzi`, showZoomControl: false, showHomeControl: false, showFullScreenControl: false, showNavigator: false });
     function drawAnnotation(annotation) {
         const marker = document.createElement('div'); marker.className = 'annotation-marker';
-        const tooltip = document.createElement('div'); tooltip.className = 'annotation-tooltip'; tooltip.textContent = annotation.text;
+        marker.style.pointerEvents = 'auto'; /* Enable clicks on the marker */
+        const tooltip = document.createElement('div'); 
+        tooltip.style.display = 'none';
+        tooltip.style.position = 'absolute';
+        tooltip.style.bottom = '120%';
+        tooltip.style.left = '50%';
+        tooltip.style.transform = 'translateX(-50%)';
+        tooltip.style.background = '#222';
+        tooltip.style.color = 'white';
+        tooltip.style.padding = '5px 10px';
+        tooltip.style.borderRadius = '4px';
+        tooltip.style.fontSize = '0.9rem';
+        tooltip.style.whiteSpace = 'nowrap';
+        tooltip.textContent = annotation.text;
         marker.appendChild(tooltip);
+        marker.onmouseover = () => { tooltip.style.display = 'block'; };
+        marker.onmouseout = () => { tooltip.style.display = 'none'; };
         viewer.addOverlay({ element: marker, location: new OpenSeadragon.Point(annotation.x, annotation.y) });
     }
     async function loadAnnotations() {
@@ -341,46 +404,34 @@ VIEWER_HTML = """
     });
     document.getElementById('zoom-in').addEventListener('click', () => viewer.viewport.zoomBy(1.4));
     document.getElementById('zoom-out').addEventListener('click', () => viewer.viewport.zoomBy(1 / 1.4));
-
-    // --- NEW: AI Assistant JavaScript ---
     document.getElementById('ai-ask-btn').addEventListener('click', async function() {
         const questionInput = document.getElementById('ai-question-input');
         const question = questionInput.value.trim();
         const responseArea = document.getElementById('ai-response-area');
-        const viewerElement = document.getElementById('viewer'); // The div to capture
-
+        const viewerElement = document.getElementById('viewer');
         if (!question) {
             responseArea.textContent = "Please enter a question.";
             return;
         }
-
         responseArea.textContent = "Capturing viewport and consulting AI...";
         this.disabled = true;
-
         try {
-            // Use html2canvas to take the "screenshot"
             const canvas = await html2canvas(viewerElement);
-            // Convert the canvas to a Base64 encoded JPEG image
             const image_data_url = canvas.toDataURL('image/jpeg', 0.9);
-
             const response = await fetch(`/ask/${datasetName}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     question: question,
-                    // Send the image data instead of coordinates
                     image_base_64: image_data_url
                 })
             });
-
             if (!response.ok) {
                 const errorData = await response.json();
                 throw new Error(errorData.error || 'An unknown error occurred.');
             }
-
             const data = await response.json();
             responseArea.textContent = data.answer;
-
         } catch (error) {
             console.error("AI request failed:", error);
             responseArea.textContent = `Error: ${error.message}`;
@@ -388,6 +439,56 @@ VIEWER_HTML = """
             this.disabled = false;
         }
     });
+
+    // --- NEW: Comparison Modal JavaScript ---
+    const compareBtn = document.getElementById('compare-btn');
+    const compareModal = document.getElementById('compare-modal');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    let viewerLeft = null;
+    let viewerRight = null;
+
+    function initCompareViewers() {
+        // Only initialize if they don't already exist
+        if (viewerLeft || viewerRight) return;
+
+        const originalImage = "{{ name }}";
+        const compareImage = "{{ compare_target }}";
+        const osdPrefix = "https://cdn.jsdelivr.net/npm/openseadragon@4.1.1/build/openseadragon/images/";
+
+        viewerLeft = OpenSeadragon({
+            id: "viewer-left",
+            prefixUrl: osdPrefix,
+            tileSources: `/static/tiles/${originalImage}/output.dzi`
+        });
+
+        viewerRight = OpenSeadragon({
+            id: "viewer-right",
+            prefixUrl: osdPrefix,
+            tileSources: `/static/tiles/${compareImage}/output.dzi`
+        });
+    }
+
+    if (compareBtn) {
+        compareBtn.addEventListener('click', () => {
+            compareModal.style.display = 'flex';
+            // Use a short delay to ensure the modal is visible before initializing viewers
+            setTimeout(initCompareViewers, 50);
+        });
+    }
+
+    closeModalBtn.addEventListener('click', () => {
+        compareModal.style.display = 'none';
+        // Destroy the viewers to free up memory and prevent errors
+        if (viewerLeft) {
+            viewerLeft.destroy();
+            viewerLeft = null;
+        }
+        if (viewerRight) {
+            viewerRight.destroy();
+            viewerRight = null;
+        }
+    });
+
 </script>
 </body>
 </html>
@@ -399,11 +500,9 @@ def index():
     image_cards_html = ""
     tiles_dir = Path(app.static_folder) / "tiles"
     if tiles_dir.exists():
-        # Loop through all available images without a limit
         for subdir in sorted(tiles_dir.iterdir()):
             if subdir.is_dir() and (subdir / "output.dzi").exists():
                 name = subdir.name
-                # Use a low-resolution tile (level 10) as a preview image.
                 preview_image_url = f"/static/tiles/{name}/output_files/10/0_0.jpg"
                 image_cards_html += f"""
                 <li>
@@ -420,7 +519,13 @@ def index():
 
 @app.route("/viewer/<name>")
 def viewer(name):
-    return render_template_string(VIEWER_HTML, name=name)
+    # Check if the current image has a comparison target defined
+    compare_with = SIMILAR_IMAGES.get(name, None)
+    return render_template_string(
+        VIEWER_HTML, 
+        name=name, 
+        compare_target=compare_with
+    )
 
 # --- Annotation API Endpoints ---
 @app.route("/annotations/<name>", methods=['GET'])
@@ -455,7 +560,7 @@ def add_annotation(name):
         json.dump(annotations, f, indent=2)
     return jsonify({"success": True}), 201
 
-# --- NEW: AI Route for Handling Questions ---
+# --- AI Route for Handling Questions ---
 @app.route("/ask/<name>", methods=['POST'])
 def ask_ai_about_view(name):
     if not ai_model:
@@ -469,20 +574,11 @@ def ask_ai_about_view(name):
     base64_string = data['image_base_64']
 
     try:
-        # Decode the Base64 string into image bytes.
         header, encoded = base64_string.split(",", 1)
         image_bytes = base64.b64decode(encoded)
-        
-        # Extract the mime type (e.g., "image/jpeg")
         mime_type = header.split(";")[0].split(":")[1]
-
-        # Prepare the image for the Gemini API
-        img_for_ai = {
-            'mime_type': mime_type,
-            'data': image_bytes
-        }
+        img_for_ai = {'mime_type': mime_type, 'data': image_bytes}
         
-        # UPDATED: More detailed system prompt
         system_prompt = """You are a helpful planetary geologist and image analysis expert. 
 Your task is to analyze images from the surface of Mars provided by a user.
 Answer the user's questions about the visual features in the image concisely.
@@ -490,9 +586,7 @@ If a feature is ambiguous due to image quality, it is okay to say so.
 Do not make up features that are not visible.Keep the answers under 60 words. No need to mention your role."""
 
         prompt = [system_prompt, "User question: " + question, img_for_ai]
-        
         response = ai_model.generate_content(prompt)
-
         return jsonify({"answer": response.text})
 
     except Exception as e:
