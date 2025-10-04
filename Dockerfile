@@ -1,18 +1,20 @@
-# Use a slim Python base image
+# Use an official Python runtime as a parent image
 FROM python:3.11-slim
 
-# Install Gunicorn for the production server
-RUN pip install flask gunicorn
-
+# Set the working directory in the container
 WORKDIR /app
 
-# Copy the server code
-COPY server.py .
+# Copy the requirements file into the container
+COPY requirements.txt .
 
-# Copy the static folder with all your pre-processed tiles
-COPY ./static ./static
+# Install all packages specified in requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy the rest of the application's code into the container
+COPY . .
+
+# Tell Docker that the container listens on port 8080
 EXPOSE 8080
 
-# Run the app with Gunicorn
-CMD ["gunicorn", "--workers", "3", "--bind", "0.0.0.0:8080", "server:app"]
+# Define the command to run your app using gunicorn
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "server:app"]
